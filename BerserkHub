@@ -1,0 +1,159 @@
+-- Создаем GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 150)
+frame.Position = UDim2.new(0.5, -100, 0.5, -75)
+frame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
+frame.Parent = screenGui
+
+local espButton = Instance.new("TextButton")
+espButton.Size = UDim2.new(0, 180, 0, 40)
+espButton.Position = UDim2.new(0.1, 0, 0.1, 0)
+espButton.Text = "Включить ESP"
+espButton.BackgroundColor3 = Color3.new(0.4, 0.4, 0.4)
+espButton.Parent = frame
+
+local noclipButton = Instance.new("TextButton")
+noclipButton.Size = UDim2.new(0, 180, 0, 40)
+noclipButton.Position = UDim2.new(0.1, 0, 0.6, 0)
+noclipButton.Text = "Включить Noclip"
+noclipButton.BackgroundColor3 = Color3.new(0.4, 0.4, 0.4)
+noclipButton.Parent = frame
+
+-- Переменные для отслеживания состояния
+local espEnabled = false
+local noclipEnabled = false
+
+-- Функция для создания ESP
+local function createESP(player)
+    for _, part in pairs(player.Character:GetChildren()) do
+        if part:IsA("BasePart") then
+            local box = Instance.new("BoxHandleAdornment")
+            box.Size = part.Size
+            box.Adornee = part
+            box.AlwaysOnTop = true
+            box.ZIndex = 10
+            box.Transparency = 0.5
+            box.Color3 = Color3.new(1, 0, 0) -- Красный цвет
+            box.Parent = part
+        end
+    end
+end
+
+-- Функция для удаления ESP
+local function removeESP(player)
+    for _, part in pairs(player.Character:GetChildren()) do
+        if part:IsA("BasePart") then
+            for _, adornment in pairs(part:GetChildren()) do
+                if adornment:IsA("BoxHandleAdornment") then
+                    adornment:Destroy()
+                end
+            end
+        end
+    end
+end
+
+-- Функция для Noclip
+local function noclip()
+    if noclipEnabled then
+        for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    else
+        for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+-- Обработчик нажатия на кнопку ESP
+espButton.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    if espEnabled then
+        espButton.Text = "Выключить ESP"
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if player ~= game.Players.LocalPlayer then
+                createESP(player)
+            end
+        end
+    else
+        espButton.Text = "Включить ESP"
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if player ~= game.Players.LocalPlayer then
+                removeESP(player)
+            end
+        end
+    end
+end)
+
+-- Обработчик нажатия на кнопку Noclip
+noclipButton.MouseButton1Click:Connect(function()
+    noclipEnabled = not noclipEnabled
+    if noclipEnabled then
+        noclipButton.Text = "Выключить Noclip"
+    else
+        noclipButton.Text = "Включить Noclip"
+    end
+    noclip()
+end)
+
+-- Отслеживаем новых игроков
+local function onPlayerAdded(player)
+    player.CharacterAdded:Connect(function()
+        if espEnabled then
+            createESP(player)
+        end
+    end)
+end
+
+game.Players.PlayerAdded:Connect(onPlayerAdded)
+
+-- Применяем к уже существующим игрокам
+for _, player in pairs(game.Players:GetPlayers()) do
+    onPlayerAdded(player)
+end
+
+-- Функция для перемещения меню
+local UserInputService = game:GetService("UserInputService")
+local dragging = false
+local dragStartPos
+local frameStartPos
+
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStartPos = Vector2.new(input.Position.X, input.Position.Y)
+        frameStartPos = frame.Position
+    end
+end)
+
+frame.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local dragDelta = Vector2.new(input.Position.X, input.Position.Y) - dragStartPos
+        frame.Position = UDim2.new(
+            frameStartPos.X.Scale,
+            frameStartPos.X.Offset + dragDelta.X,
+            frameStartPos.Y.Scale,
+            frameStartPos.Y.Offset + dragDelta.Y
+        )
+    end
+end)
+
+frame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+-- Постоянно проверяем состояние Noclip
+game:GetService("RunService").Stepped:Connect(function()
+    if noclipEnabled then
+        noclip()
+    end
+end)
